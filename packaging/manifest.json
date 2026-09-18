@@ -1,0 +1,7 @@
+{
+  "name": "Hoard",
+  "version_number": "0.1.0",
+  "website_url": "https://github.com/isimp/Hoard",
+  "description": "Seal a single chest so container automation mods leave it alone.",
+  "dependencies": []
+}

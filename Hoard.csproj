@@ -1,0 +1,87 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>Hoard</AssemblyName>
+    <RootNamespace>Hoard</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Version>0.1.0</Version>
+    <Authors>isimp</Authors>
+    <Product>Hoard</Product>
+    <Description>Mark a chest and the container-automation mods leave it alone.</Description>
+    <Copyright>Copyright (c) 2026 isimp</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <DebugType>portable</DebugType>
+    <!-- annotations, not enable: the vendored ServerSync source is written against nullable
+         reference types, and this lets its `?` annotations parse without turning null-state
+         warnings on for the rest of the project. -->
+    <Nullable>annotations</Nullable>
+    <NoWarn>$(NoWarn);CS0649</NoWarn>
+  </PropertyGroup>
+
+  <!-- Where the references come from. Two ways, because a machine with the game on it and a
+       build server have nothing in common:
+
+       Local:  a Valheim install and a BepInEx profile, and the build deploys into the profile
+               when it finishes. Override either if yours differ.
+                 dotnet build -p:ValheimDir=... -p:ProfileDir=...
+
+       Anywhere else: one flat folder of DLLs, and setting it touches nothing local, deploy
+       included.
+                 dotnet build -p:LibsDir=lib -->
+  <PropertyGroup>
+    <ValheimDir Condition="'$(ValheimDir)' == '' And '$(VALHEIM_DIR)' != ''">$(VALHEIM_DIR)</ValheimDir>
+    <ValheimDir Condition="'$(ValheimDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Valheim</ValheimDir>
+    <ProfileDir Condition="'$(ProfileDir)' == ''">$(AppData)\com.kesomannen.gale\valheim\profiles\Default</ProfileDir>
+    <BepInExDir>$(ProfileDir)\BepInEx</BepInExDir>
+    <DeployDir>$(BepInExDir)\plugins\Hoard</DeployDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(LibsDir)' == ''">
+    <ManagedDir>$(ValheimDir)\valheim_Data\Managed</ManagedDir>
+    <CoreDir>$(BepInExDir)\core</CoreDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(LibsDir)' != ''">
+    <ManagedDir>$(LibsDir)</ManagedDir>
+    <CoreDir>$(LibsDir)</CoreDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- ServerSync compresses its config payloads. -->
+  <ItemGroup>
+    <Reference Include="System.IO.Compression" />
+  </ItemGroup>
+
+  <!-- Forward slashes on purpose: Windows accepts them, and CI may build this on Linux. -->
+  <ItemGroup>
+    <Reference Include="BepInEx"><HintPath>$(CoreDir)/BepInEx.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(CoreDir)/0Harmony.dll</HintPath><Private>false</Private></Reference>
+
+    <Reference Include="assembly_valheim"><HintPath>$(ManagedDir)/assembly_valheim.dll</HintPath><Private>false</Private></Reference>
+    <!-- GetStableHashCode, for the ZDO key. -->
+    <Reference Include="assembly_utils"><HintPath>$(ManagedDir)/assembly_utils.dll</HintPath><Private>false</Private></Reference>
+
+    <Reference Include="UnityEngine"><HintPath>$(ManagedDir)/UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(ManagedDir)/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(ManagedDir)/UnityEngine.InputLegacyModule.dll</HintPath><Private>false</Private></Reference>
+
+    <!-- ServerSync only: it rewrites the connect-error screen, which is TextMeshPro. -->
+    <Reference Include="Unity.TextMeshPro"><HintPath>$(ManagedDir)/Unity.TextMeshPro.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UI"><HintPath>$(ManagedDir)/UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UIModule"><HintPath>$(ManagedDir)/UnityEngine.UIModule.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <Target Name="DeployToProfile" AfterTargets="Build"
+          Condition="'$(LibsDir)' == '' And Exists('$(BepInExDir)\plugins')">
+    <MakeDir Directories="$(DeployDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployDir)" ContinueOnError="true" />
+    <Message Importance="high" Text="Hoard -> $(DeployDir)" />
+  </Target>
+
+</Project>

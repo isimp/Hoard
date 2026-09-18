@@ -1,0 +1,145 @@
+name: Release
+
+# Manual only. Publishes to GitHub and to Hexium.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 0.1.0 (must already match the source)"
+        required: true
+      notes:
+        description: "One line for the top of the release notes (optional)"
+        required: false
+      draft:
+        description: "Create the release as a draft"
+        type: boolean
+        default: false
+      team:
+        description: "Hexium team to publish under (the package namespace)"
+        required: true
+        default: "isimp"
+      categories:
+        description: "Hexium category slugs, comma separated"
+        required: false
+        default: "Quality of Life,Mechanics,Open Source"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The version lives in three places that have to agree with each other and with what you
+      # typed. Checked before anything is built, so a mismatch costs seconds rather than
+      # producing a release whose DLL or package reports a different version than its tag.
+      #
+      # Inputs are passed through the environment rather than pasted into the script, so what
+      # someone types in the dispatch form is data and never shell.
+      - name: Check the version matches the source
+        env:
+          WANT: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          want="$WANT"
+
+          csproj=$(grep -oPm1 '(?<=<Version>)[^<]+' Hoard.csproj)
+          plugin=$(grep -oPm1 'public const string Version = "\K[^"]+' src/Plugin.cs)
+          manifest=$(grep -oPm1 '"version_number"\s*:\s*"\K[^"]+' packaging/manifest.json)
+
+          echo "asked for    : $want"
+          echo "csproj       : $csproj"
+          echo "Plugin.cs    : $plugin"
+          echo "manifest.json: $manifest"
+
+          if [ "$csproj" != "$want" ] || [ "$plugin" != "$want" ] || [ "$manifest" != "$want" ]; then
+            echo "::error::Version mismatch. Set $want in Hoard.csproj (<Version>), src/Plugin.cs (the Version const) and packaging/manifest.json (version_number), then run this again."
+            exit 1
+          fi
+
+      # The icon is committed by hand. Checked up front so a missing one reads as a missing
+      # icon rather than as a copy error halfway through packaging.
+      - name: Check the icon is there
+        run: |
+          if [ ! -f packaging/icon.png ]; then
+            echo "::error::packaging/icon.png is missing. Drop a 256x256 PNG there and commit it."
+            exit 1
+          fi
+          echo "icon present"
+
+      # Publishing is part of releasing here, so a missing token is a failure now rather than
+      # after the GitHub release already exists.
+      - name: Check the Hexium token is set
+        env:
+          HEXIUM_TOKEN: ${{ secrets.HEXIUM_TOKEN }}
+        run: |
+          if [ -z "${HEXIUM_TOKEN:-}" ]; then
+            echo "::error::HEXIUM_TOKEN is not set. Create an API token in your Hexium team settings and add it as a repository secret."
+            exit 1
+          fi
+          echo "token present"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build
+        run: dotnet build -c Release -p:LibsDir=lib --nologo
+
+      # Mod sites want every required file at the root of the archive, not inside a folder.
+      - name: Package
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          name="Hoard-$VERSION"
+
+          mkdir -p dist/package
+          cp bin/Release/Hoard.dll dist/package/
+          cp packaging/manifest.json packaging/icon.png dist/package/
+          cp README.md CHANGELOG.md LICENSE dist/package/
+
+          (cd dist/package && zip -qr "../$name.zip" .)
+          cp bin/Release/Hoard.dll dist/
+
+          echo "--- package contents ---"
+          unzip -l "dist/$name.zip"
+
+      # Everything the site requires of the archive — files at the root, a 256x256 icon, the
+      # name and description rules — checked before anything is published.
+      - name: Check the package
+        env:
+          PACKAGE: dist/Hoard-${{ inputs.version }}.zip
+        run: python3 tools/publish-hexium.py "$PACKAGE" --check-only
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: Hoard ${{ inputs.version }}
+          draft: ${{ inputs.draft }}
+          generate_release_notes: true
+          body: |
+            ${{ inputs.notes }}
+
+            Install: drop `Hoard.dll` into `BepInEx/plugins`, or install the zip with a mod manager.
+
+            Requires BepInEx 5. Install it on the server and on every client: a server running Hoard refuses players without it, because the automation mods run on each client.
+
+            Look at a chest and press K to seal it. /hoard lists the mods it found.
+          files: |
+            dist/Hoard-${{ inputs.version }}.zip
+            dist/Hoard.dll
+
+      # If this step fails, fix the cause and run the workflow again: the release step above
+      # updates the existing release rather than making a second one.
+      - name: Publish to Hexium
+        env:
+          HEXIUM_TOKEN: ${{ secrets.HEXIUM_TOKEN }}
+          PACKAGE: dist/Hoard-${{ inputs.version }}.zip
+          TEAM: ${{ inputs.team }}
+          CATEGORIES: ${{ inputs.categories }}
+        run: python3 tools/publish-hexium.py "$PACKAGE" --team "$TEAM" --categories "$CATEGORIES"

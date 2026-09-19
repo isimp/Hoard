@@ -147,6 +147,7 @@ namespace Hoard
             try
             {
                 Harmony.PatchAll(typeof(Marking.ContainerGetHoverTextPatch));
+                Harmony.PatchAll(typeof(SealSync.ContainerAwakePatch));
                 Harmony.PatchAll(typeof(Bootstrap));
             }
             catch (Exception e)
@@ -163,6 +164,7 @@ namespace Hoard
         private void Update()
         {
             Marking.Poll();
+            SealSync.Tick();
         }
 
         private void OnDestroy()

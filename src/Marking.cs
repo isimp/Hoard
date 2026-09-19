@@ -85,7 +85,7 @@ namespace Hoard
                 return;
             }
 
-            Interception.OnSealChanged(container, sealing);
+            SealSync.Refresh(container);
 
             Message(player, sealing
                 ? "Chest sealed: automation mods will leave it alone."

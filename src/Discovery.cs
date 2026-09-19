@@ -22,6 +22,20 @@ namespace Hoard
         /// <summary>True when the mod is still registering because patching it threw.</summary>
         internal bool Broken;
 
+        /// <summary>
+        /// The mod's static container collections, minus any whose name marks it as a pending-
+        /// removal queue. Read to tell whether the mod is currently tracking a given chest.
+        /// </summary>
+        internal List<FieldInfo> Registries = new List<FieldInfo>();
+
+        /// <summary>
+        /// Chests this mod asked to track but is not being allowed to, because they are sealed:
+        /// either the registration was refused, or the chest was evicted when it got sealed. On
+        /// unseal exactly these are handed back through the mod's own add method, so a chest the
+        /// mod never wanted (its own access checks said no) is never forced on it.
+        /// </summary>
+        internal readonly HashSet<Container> Held = new HashSet<Container>();
+
         internal string Key => AssemblyName + "::" + Add.DeclaringType?.FullName + "::" + Add.Name;
 
         internal string Describe()
@@ -180,6 +194,7 @@ namespace Hoard
                     AssemblyName = name,
                     Add = add,
                     Remove = remove,
+                    Registries = RegistryFields(type),
                 };
 
                 // An assembly loaded from two paths would otherwise bind the same config key
@@ -265,6 +280,41 @@ namespace Hoard
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// The static collections on a registry type that hold its tracked containers. Fields
+        /// named like a removal queue (AzuAutoStore's and GrabMaterials' ContainersToRemove) are
+        /// left out: a chest sitting in one of those is on its way out, not tracked.
+        /// </summary>
+        private static List<FieldInfo> RegistryFields(Type type)
+        {
+            const BindingFlags Flags =
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+
+            List<FieldInfo> result = new List<FieldInfo>();
+            try
+            {
+                foreach (FieldInfo f in type.GetFields(Flags))
+                {
+                    Type ft = f.FieldType;
+                    if (!ft.IsGenericType || f.Name.IndexOf("remove", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        continue;
+                    }
+
+                    if (ft.GetGenericArguments().Contains(typeof(Container)))
+                    {
+                        result.Add(f);
+                    }
+                }
+            }
+            catch
+            {
+                // Leaves the list empty, which Interception reads as "assume tracked".
+            }
+
+            return result;
         }
 
         private static IEnumerable<Type> TypesOf(Assembly asm)

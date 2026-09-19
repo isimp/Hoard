@@ -10,6 +10,8 @@ Each match gets its own switch under `Targets` in the config. A patch that fails
 
 The seal is a value on the chest's ZDO, which the game saves and replicates like any other. Removing the mod leaves nothing behind but that unread value.
 
+The automation mods build their lists on each player's machine, so a seal change has to be applied on every machine, not only where the key was pressed. Each machine keeps the seal state of every chest it has loaded and compares it twice a second. A change from any player takes the chest out of the mods' lists or puts it back, with no messages of its own; the ZDO sync that carries the seal is the signal. Hoard remembers each registration it refused or removed, and on unsealing replays exactly those through the mod's own add method, so a mod is never handed a chest its own checks turned down.
+
 `AutoSealSeidrChest` does not write a seal. It matches the name SeidrChest gives a chest while it is bound, so the rule stops applying as soon as the chest is unbound.
 
 ## Server rules

@@ -4,6 +4,8 @@ Seal a chest so that container automation mods leave it alone.
 
 Mods that store items into nearby chests, craft from them or feed tames from them usually treat every chest you own the same way. Their own settings can at most exclude a whole chest type. Hoard lets you take one particular chest out of their reach.
 
+![A sealed chest in Hoard](https://raw.githubusercontent.com/isimp/Hoard/main/docs/images/screenshot.webp)
+
 ## AI notice
 
 Most of Hoard was written by Claude Code (Anthropic), which did the heavy lifting on implementation and design. Heads-up so you can judge for yourself.

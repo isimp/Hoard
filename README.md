@@ -4,6 +4,10 @@ Seal a chest so that container automation mods leave it alone.
 
 Mods that store items into nearby chests, craft from them or feed tames from them usually treat every chest you own the same way. Their own settings can at most exclude a whole chest type. Hoard lets you take one particular chest out of their reach.
 
+## AI notice
+
+Most of Hoard was written by Claude Code (Anthropic), which did the heavy lifting on implementation and design. Heads-up so you can judge for yourself.
+
 ## Using it
 
 Look at a chest and press K to seal it, and press K again to unseal it. The chest's hover text shows whether it is sealed. The seal is stored on the chest itself, so it lasts across saves and is the same for every player. Inside a ward only players permitted on that ward can change it, and a personal chest can only be sealed by the player who built it.

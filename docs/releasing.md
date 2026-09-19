@@ -62,7 +62,7 @@ The endpoints match Thunderstore's API. For authorization the script tries `Bear
 It can also be run by hand:
 
 ```bash
-HEXIUM_TOKEN=... python3 tools/publish-hexium.py dist/Hoard-0.1.0.zip --team isimp --categories "Quality of Life,Mechanics,Open Source"
+HEXIUM_TOKEN=... python3 tools/publish-hexium.py dist/Hoard-0.1.0.zip --team isimp --categories "Storage,Quality of Life,Open Source,Valheim 1.0"
 python3 tools/publish-hexium.py dist/Hoard-0.1.0.zip --check-only   # validate only
 ```
 

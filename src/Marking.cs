@@ -204,8 +204,8 @@ namespace Hoard
         {
             KeyCode modifier = Plugin.MarkModifier;
             string key = modifier == KeyCode.None
-                ? Plugin.MarkKey.ToString()
-                : modifier + " + " + Plugin.MarkKey;
+                ? KeyLabels.Of(Plugin.MarkKey)
+                : KeyLabels.Of(modifier) + " + " + KeyLabels.Of(Plugin.MarkKey);
 
             return "[<color=yellow><b>" + key + "</b></color>]";
         }

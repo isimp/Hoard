@@ -16,6 +16,8 @@ The automation mods build their lists on each player's machine, so a seal change
 
 A sealed chest is marked in two ways. The tint is an emission colour set through the game's `MaterialMan`, on the same object the building highlight uses, so both share one property block rather than two blocks overwriting each other on the same renderers. A highlight, including the one AzuAutoStore shows when it stores into a chest, resets the emission when it ends, so the tint is re-applied on the regular seal check and skipped while a highlight is running. Containers that are only part of a larger piece, such as on carts and ships, get no tint, since it would colour the whole vehicle. The shimmer is a copy of the game's `vfx_TrollPheromones` effect, built inactive and stripped to its renderers, particles and light before it is attached, and its light carries the game's `LightLod` so it is culled at a distance and counts against the light limit in the graphics settings.
 
+Sealing and unsealing play the game's `sfx_shieldgenerator_startup` and `sfx_shieldgenerator_shutdown`. Both prefabs carry a `ZNetView`, so they are instantiated once, on the machine where the key was pressed, the way the game's own `EffectList` plays them: the object reaches nearby players through the normal object sync and its `TimedDestruction` removes it for everyone. The seal change that other machines apply from the ZDO plays no sound, so nobody hears it twice.
+
 `AutoSealSeidrChest` does not write a seal. It matches the name SeidrChest gives a chest while it is bound, so the rule stops applying as soon as the chest is unbound.
 
 ## Server rules

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+Sealing a chest now plays the shield generator's start-up sound, and unsealing it the shut-down sound. Players nearby hear it as well.
+
 ## 0.2.0
 
 Sealed chests now stand out without hovering: they carry a faint, steady violet tint and a small shimmer above them. Both are on by default and can be switched off separately with ShowSealGlow and ShowSealEffect, and the tint's colour and strength are adjustable.

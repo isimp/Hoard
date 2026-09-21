@@ -38,7 +38,7 @@ namespace Hoard
     {
         public const string Guid = "isimp.Hoard";
         public const string Name = "Hoard";
-        public const string Version = "0.2.0";
+        public const string Version = "0.2.1";
 
         /// <summary>
         /// The oldest Hoard a peer may run and still be let in. Raise it only when a release

@@ -86,6 +86,7 @@ namespace Hoard
             }
 
             SealSync.Refresh(container);
+            PlaySound(container, sealing);
 
             Message(player, sealing
                 ? "Chest sealed: automation mods will leave it alone."
@@ -213,6 +214,32 @@ namespace Hoard
         // MessageHud localizes what it is handed, which is why vanilla passes raw "$msg_" tokens
         // to Message. Doing the same avoids touching Localization.instance, which is not
         // guaranteed to exist at every moment this can be called.
+        private const string SealSoundPrefab = "sfx_shieldgenerator_startup";
+        private const string UnsealSoundPrefab = "sfx_shieldgenerator_shutdown";
+
+        /// <summary>
+        /// Plays the shield generator's start-up or shut-down sound at the chest.
+        ///
+        /// Both sound prefabs carry a ZNetView, so instantiating one creates a networked object that
+        /// reaches nearby players through the normal object sync, and its TimedDestruction removes
+        /// it for everyone once the owner's timer runs out. That is how the game's own EffectList
+        /// plays them. It therefore happens only here, on the machine where the key was pressed:
+        /// SealSync applying the same change on other machines must not play it again, or every
+        /// player would hear it once per player nearby.
+        /// </summary>
+        private static void PlaySound(Container container, bool sealing)
+        {
+            string name = sealing ? SealSoundPrefab : UnsealSoundPrefab;
+            GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(name) : null;
+            if (prefab == null)
+            {
+                Plugin.Log.LogWarning(name + " was not found, the seal is changed without a sound.");
+                return;
+            }
+
+            Object.Instantiate(prefab, container.transform.position, Quaternion.identity);
+        }
+
         private static void Message(Player player, string text)
         {
             player.Message(MessageHud.MessageType.Center, text);

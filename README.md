@@ -14,7 +14,7 @@ Most of Hoard was written by Claude Code (Anthropic), which did the heavy liftin
 
 Look at a chest and press K to seal it, and press K again to unseal it. The chest's hover text shows whether it is sealed. The seal is stored on the chest itself, so it lasts across saves and is the same for every player. Inside a ward only players permitted on that ward can change it, and a personal chest can only be sealed by the player who built it.
 
-Sealed chests carry a faint violet tint and a small shimmer above them, so they stand out without hovering. Both can be switched off in the settings.
+Sealing and unsealing play a short sound that players nearby hear as well. Sealed chests carry a faint violet tint and a small shimmer above them, so they stand out without hovering. Both can be switched off in the settings.
 
 Hoard finds supported mods on its own and does nothing if none are installed. Type /hoard in chat to see what it found. If a supported mod is updated in a way Hoard no longer recognises, Hoard tells you when you spawn, because that mod ignores seals until Hoard supports it again.
 

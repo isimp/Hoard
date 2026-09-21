@@ -14,13 +14,13 @@ The seal is a value on the chest's ZDO, which the game saves and replicates like
 
 The automation mods build their lists on each player's machine, so a seal change has to be applied on every machine, not only where the key was pressed. Each machine keeps the seal state of every chest it has loaded and compares it twice a second. A change from any player takes the chest out of the mods' lists or puts it back, with no messages of its own; the ZDO sync that carries the seal is the signal. Hoard remembers each registration it refused or removed, and on unsealing replays exactly those through the mod's own add method, so a mod is never handed a chest its own checks turned down.
 
-The optional glow is a point light added as a child of the sealed chest, with the game's `LightLod` component, so it is switched off at a distance and counts against the light limit in the graphics settings. It does not touch the chest's materials, which the game and other mods also write.
+A sealed chest is marked in two ways. The tint is an emission colour set through the game's `MaterialMan`, on the same object the building highlight uses, so both share one property block rather than two blocks overwriting each other on the same renderers. A highlight, including the one AzuAutoStore shows when it stores into a chest, resets the emission when it ends, so the tint is re-applied on the regular seal check and skipped while a highlight is running. Containers that are only part of a larger piece, such as on carts and ships, get no tint, since it would colour the whole vehicle. The shimmer is a copy of the game's `vfx_TrollPheromones` effect, built inactive and stripped to its renderers, particles and light before it is attached, and its light carries the game's `LightLod` so it is culled at a distance and counts against the light limit in the graphics settings.
 
 `AutoSealSeidrChest` does not write a seal. It matches the name SeidrChest gives a chest while it is bound, so the rule stops applying as soon as the chest is unbound.
 
 ## Server rules
 
-On a server, Hoard is required through ServerSync and clients without it are refused. `Enabled`, `AutoSealSeidrChest`, `DefaultOffAssemblies` and every target switch are pushed from the server while `LockConfiguration` is on, and admins can still change them. `MarkKey`, `MarkModifier`, `ShowHoverHint` and the three glow settings are never synchronised. A server rule for a mod a player does not have is ignored on that player's machine.
+On a server, Hoard is required through ServerSync and clients without it are refused. `Enabled`, `AutoSealSeidrChest`, `DefaultOffAssemblies` and every target switch are pushed from the server while `LockConfiguration` is on, and admins can still change them. `MarkKey`, `MarkModifier`, `ShowHoverHint` and the four seal display settings are never synchronised. A server rule for a mod a player does not have is ignored on that player's machine.
 
 ## Limits
 

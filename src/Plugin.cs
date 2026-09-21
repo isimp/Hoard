@@ -64,18 +64,23 @@ namespace Hoard
         private static ConfigEntry<bool> _autoSealSeidrChest;
         private static ConfigEntry<bool> _showHoverHint;
         private static ConfigEntry<bool> _showSealGlow;
+        private static ConfigEntry<bool> _showSealEffect;
         private static ConfigEntry<Color> _sealGlowColor;
-        private static ConfigEntry<float> _sealGlowIntensity;
+        private static ConfigEntry<float> _sealGlowStrength;
         private static ConfigEntry<string> _defaultOffAssemblies;
+
+        // #785FB0, a muted violet. Alpha plays no part in an emission tint.
+        private static readonly Color SealGlowDefault = new Color(120f / 255f, 95f / 255f, 176f / 255f, 0f);
 
         internal static bool Enabled => _enabled == null || _enabled.Value;
         internal static KeyCode MarkKey => _markKey?.Value ?? KeyCode.K;
         internal static KeyCode MarkModifier => _markModifier?.Value ?? KeyCode.None;
         internal static bool AutoSealSeidrChest => _autoSealSeidrChest != null && _autoSealSeidrChest.Value;
         internal static bool ShowHoverHint => _showHoverHint == null || _showHoverHint.Value;
-        internal static bool ShowSealGlow => _showSealGlow != null && _showSealGlow.Value;
-        internal static Color SealGlowColor => _sealGlowColor?.Value ?? new Color(0.56f, 0.83f, 1f);
-        internal static float SealGlowIntensity => _sealGlowIntensity?.Value ?? 1f;
+        internal static bool ShowSealGlow => _showSealGlow == null || _showSealGlow.Value;
+        internal static bool ShowSealEffect => _showSealEffect == null || _showSealEffect.Value;
+        internal static Color SealGlowColor => _sealGlowColor?.Value ?? SealGlowDefault;
+        internal static float SealGlowStrength => _sealGlowStrength?.Value ?? 0.25f;
 
         /// <summary>
         /// Binds a setting that is a *rule* and hands it to ServerSync, so an admin's value governs
@@ -146,18 +151,24 @@ namespace Hoard
                 "The default covers a map pin mod that only reads chests. This only sets the initial value; each " +
                 "target's own entry below takes over afterwards.");
 
-            _showSealGlow = Config.Bind("Display", "ShowSealGlow", false,
-                "Give sealed chests a faint glow, so they can be told apart without hovering over them.");
+            _showSealGlow = Config.Bind("Display", "ShowSealGlow", true,
+                "Give sealed chests a faint, steady tint, so they can be told apart without hovering over them. " +
+                "A building or storage highlight takes precedence while it lasts.");
 
-            _sealGlowColor = Config.Bind("Display", "SealGlowColor", new Color(0.56f, 0.83f, 1f),
-                "The colour of that glow.");
+            _showSealEffect = Config.Bind("Display", "ShowSealEffect", true,
+                "Show a small shimmer above sealed chests.");
 
-            _sealGlowIntensity = Config.Bind("Display", "SealGlowIntensity", 1f,
-                new ConfigDescription("The brightness of that glow.", new AcceptableValueRange<float>(0.1f, 3f)));
+            _sealGlowColor = Config.Bind("Display", "SealGlowColor", SealGlowDefault,
+                "The colour of the tint.");
+
+            _sealGlowStrength = Config.Bind("Display", "SealGlowStrength", 0.25f,
+                new ConfigDescription("How strong the tint is. The building highlight uses about 0.4.",
+                    new AcceptableValueRange<float>(0.01f, 1f)));
 
             _showSealGlow.SettingChanged += (_, __) => SealGlow.ApplyAll();
+            _showSealEffect.SettingChanged += (_, __) => SealGlow.ApplyAll();
             _sealGlowColor.SettingChanged += (_, __) => SealGlow.ApplyAll();
-            _sealGlowIntensity.SettingChanged += (_, __) => SealGlow.ApplyAll();
+            _sealGlowStrength.SettingChanged += (_, __) => SealGlow.ApplyAll();
 
             _enabled.SettingChanged += (_, __) =>
             {

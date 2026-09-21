@@ -75,6 +75,11 @@ namespace Hoard
                 }
 
                 Refresh(c);
+
+                if (Known.TryGetValue(c, out bool isSealed) && isSealed)
+                {
+                    SealGlow.Maintain(c);
+                }
             }
         }
 

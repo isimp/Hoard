@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.1
+## 0.2.0
 
 Sealed chests now stand out without hovering: they carry a faint, steady violet tint and a small shimmer above them. Both are on by default and can be switched off separately with ShowSealGlow and ShowSealEffect, and the tint's colour and strength are adjustable.
 

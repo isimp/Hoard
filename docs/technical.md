@@ -6,17 +6,21 @@ Valheim has no container registry and no way to exclude a single chest. `Contain
 
 What container automation mods have in common is the registry each one builds for itself: a type holding a static collection of `Container`, and a static `void` method on that type taking exactly one `Container`. Hoard scans the loaded plugin assemblies for that shape at the main menu and adds a prefix to every match, so a sealed chest never enters the list. That covers every feature built on the list, including ones a mod adds later. Names are not used to decide what is included, only to tell adding from removing, so a method with an unexpected name is still found and starts out switched off.
 
-Each match gets its own switch under `Targets` in the config. A patch that fails is logged and skipped, and that mod keeps its normal behaviour.
+Each match gets its own switch under `Targets` in the config. A patch that fails is logged and skipped, and that mod keeps its normal behaviour. Hoard excludes its own assembly from the scan by identity, since its seal tracking has the same shape it looks for.
+
+Those switches also serve as a record of earlier sessions. BepInEx keeps config entries that were read from the file but not bound as orphans and writes them back on save. After the scan, an enabled `Targets` entry that is still an orphan, for a mod whose assembly is loaded and which has no other active target this session, means the mod was updated in a way Hoard no longer recognises. Hoard logs a warning, shows a message when the player spawns and lists the entry in `/hoard`, until the mod is recognised again or uninstalled.
 
 The seal is a value on the chest's ZDO, which the game saves and replicates like any other. Removing the mod leaves nothing behind but that unread value.
 
 The automation mods build their lists on each player's machine, so a seal change has to be applied on every machine, not only where the key was pressed. Each machine keeps the seal state of every chest it has loaded and compares it twice a second. A change from any player takes the chest out of the mods' lists or puts it back, with no messages of its own; the ZDO sync that carries the seal is the signal. Hoard remembers each registration it refused or removed, and on unsealing replays exactly those through the mod's own add method, so a mod is never handed a chest its own checks turned down.
 
+The optional glow is a point light added as a child of the sealed chest, with the game's `LightLod` component, so it is switched off at a distance and counts against the light limit in the graphics settings. It does not touch the chest's materials, which the game and other mods also write.
+
 `AutoSealSeidrChest` does not write a seal. It matches the name SeidrChest gives a chest while it is bound, so the rule stops applying as soon as the chest is unbound.
 
 ## Server rules
 
-On a server, Hoard is required through ServerSync and clients without it are refused. `Enabled`, `AutoSealSeidrChest`, `DefaultOffAssemblies` and every target switch are pushed from the server while `LockConfiguration` is on, and admins can still change them. `MarkKey`, `MarkModifier` and `ShowHoverHint` are never synchronised. A server rule for a mod a player does not have is ignored on that player's machine.
+On a server, Hoard is required through ServerSync and clients without it are refused. `Enabled`, `AutoSealSeidrChest`, `DefaultOffAssemblies` and every target switch are pushed from the server while `LockConfiguration` is on, and admins can still change them. `MarkKey`, `MarkModifier`, `ShowHoverHint` and the three glow settings are never synchronised. A server rule for a mod a player does not have is ignored on that player's machine.
 
 ## Limits
 

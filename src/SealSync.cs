@@ -39,7 +39,13 @@ namespace Hoard
             {
                 if (__instance != null && !Known.ContainsKey(__instance))
                 {
-                    Known[__instance] = Exemption.IsSealed(__instance);
+                    bool isSealed = Exemption.IsSealed(__instance);
+                    Known[__instance] = isSealed;
+
+                    if (isSealed)
+                    {
+                        SealGlow.Apply(__instance, true);
+                    }
                 }
             }
         }
@@ -93,6 +99,7 @@ namespace Hoard
             Known[container] = now;
             Plugin.Log.LogInfo($"Chest {(now ? "sealed" : "unsealed")}: {container.name} at {container.transform.position}");
             Interception.OnSealChanged(container, now);
+            SealGlow.Apply(container, now);
         }
 
         /// <summary>The loaded chests that are sealed, for a target switched on mid-session.</summary>

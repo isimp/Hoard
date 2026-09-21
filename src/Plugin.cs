@@ -38,7 +38,7 @@ namespace Hoard
     {
         public const string Guid = "isimp.Hoard";
         public const string Name = "Hoard";
-        public const string Version = "0.1.0";
+        public const string Version = "0.1.1";
 
         /// <summary>
         /// The oldest Hoard a peer may run and still be let in. Raise it only when a release
@@ -63,6 +63,9 @@ namespace Hoard
         private static ConfigEntry<KeyCode> _markModifier;
         private static ConfigEntry<bool> _autoSealSeidrChest;
         private static ConfigEntry<bool> _showHoverHint;
+        private static ConfigEntry<bool> _showSealGlow;
+        private static ConfigEntry<Color> _sealGlowColor;
+        private static ConfigEntry<float> _sealGlowIntensity;
         private static ConfigEntry<string> _defaultOffAssemblies;
 
         internal static bool Enabled => _enabled == null || _enabled.Value;
@@ -70,6 +73,9 @@ namespace Hoard
         internal static KeyCode MarkModifier => _markModifier?.Value ?? KeyCode.None;
         internal static bool AutoSealSeidrChest => _autoSealSeidrChest != null && _autoSealSeidrChest.Value;
         internal static bool ShowHoverHint => _showHoverHint == null || _showHoverHint.Value;
+        internal static bool ShowSealGlow => _showSealGlow != null && _showSealGlow.Value;
+        internal static Color SealGlowColor => _sealGlowColor?.Value ?? new Color(0.56f, 0.83f, 1f);
+        internal static float SealGlowIntensity => _sealGlowIntensity?.Value ?? 1f;
 
         /// <summary>
         /// Binds a setting that is a *rule* and hands it to ServerSync, so an admin's value governs
@@ -140,7 +146,24 @@ namespace Hoard
                 "The default covers a map pin mod that only reads chests. This only sets the initial value; each " +
                 "target's own entry below takes over afterwards.");
 
-            _enabled.SettingChanged += (_, __) => Interception.ApplyAll();
+            _showSealGlow = Config.Bind("Display", "ShowSealGlow", false,
+                "Give sealed chests a faint glow, so they can be told apart without hovering over them.");
+
+            _sealGlowColor = Config.Bind("Display", "SealGlowColor", new Color(0.56f, 0.83f, 1f),
+                "The colour of that glow.");
+
+            _sealGlowIntensity = Config.Bind("Display", "SealGlowIntensity", 1f,
+                new ConfigDescription("The brightness of that glow.", new AcceptableValueRange<float>(0.1f, 3f)));
+
+            _showSealGlow.SettingChanged += (_, __) => SealGlow.ApplyAll();
+            _sealGlowColor.SettingChanged += (_, __) => SealGlow.ApplyAll();
+            _sealGlowIntensity.SettingChanged += (_, __) => SealGlow.ApplyAll();
+
+            _enabled.SettingChanged += (_, __) =>
+            {
+                Interception.ApplyAll();
+                SealGlow.ApplyAll();
+            };
 
             Harmony = new Harmony(Guid);
 
@@ -148,6 +171,7 @@ namespace Hoard
             {
                 Harmony.PatchAll(typeof(Marking.ContainerGetHoverTextPatch));
                 Harmony.PatchAll(typeof(SealSync.ContainerAwakePatch));
+                Harmony.PatchAll(typeof(LostTargetNotice));
                 Harmony.PatchAll(typeof(Bootstrap));
             }
             catch (Exception e)
@@ -223,6 +247,79 @@ namespace Hoard
         /// Registered with isCheat false, which also makes it reachable from chat as /hoard --
         /// Chat.InputText strips the slash and hands anything non-cheat to TryRunCommand.
         /// </summary>
+        /// <summary>
+        /// The config entries read from the file that nothing has bound this session. BepInEx keeps
+        /// them in a private property; reading it is the only way to see what earlier sessions knew.
+        /// </summary>
+        internal static Dictionary<ConfigDefinition, string> OrphanedConfigEntries()
+        {
+            try
+            {
+                return AccessTools.Property(typeof(ConfigFile), "OrphanedEntries")?.GetValue(_config, null)
+                    as Dictionary<ConfigDefinition, string>;
+            }
+            catch (Exception e)
+            {
+                Log.LogWarning("Could not read earlier config entries: " + e.Message);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Tells the player once per session, when their character first spawns, that a mod which
+        /// used to honour seals no longer does. The log alone is easy to miss, and a seal that
+        /// silently stopped working is the one failure this mod must not hide.
+        /// </summary>
+        [HarmonyPatch(typeof(Player), "OnSpawned")]
+        private static class LostTargetNotice
+        {
+            private static bool _shown;
+
+            private static void Postfix(Player __instance)
+            {
+                if (_shown || __instance != Player.m_localPlayer)
+                {
+                    return;
+                }
+
+                int broken = 0;
+                foreach (Target t in Discovery.Targets)
+                {
+                    if (t.Broken)
+                    {
+                        broken++;
+                    }
+                }
+
+                int problems = Discovery.Lost.Count + broken;
+                if (problems == 0)
+                {
+                    return;
+                }
+
+                _shown = true;
+
+                __instance.Message(MessageHud.MessageType.TopLeft,
+                    "Hoard: " + problems + " supported mod(s) no longer honour seals. Type /hoard for details.");
+
+                if (Chat.instance != null)
+                {
+                    foreach (string lost in Discovery.Lost)
+                    {
+                        Chat.instance.AddString("Hoard: no longer recognised, seals not honoured: " + lost);
+                    }
+
+                    foreach (Target t in Discovery.Targets)
+                    {
+                        if (t.Broken)
+                        {
+                            Chat.instance.AddString("Hoard: could not be patched, seals not honoured: " + t.Key);
+                        }
+                    }
+                }
+            }
+        }
+
         private static void RegisterConsoleCommand()
         {
             new Terminal.ConsoleCommand("hoard", "List the container registration points Hoard found.",
@@ -230,7 +327,7 @@ namespace Hoard
                 {
                     List<Target> targets = Discovery.Targets;
 
-                    if (targets.Count == 0)
+                    if (targets.Count == 0 && Discovery.Lost.Count == 0)
                     {
                         args.Context?.AddString("Hoard: nothing discovered (no container-automation mods loaded).");
                         return;
@@ -241,6 +338,11 @@ namespace Hoard
                     foreach (Target t in targets)
                     {
                         sb.Append('\n').Append("  ").Append(t.Describe());
+                    }
+
+                    foreach (string lost in Discovery.Lost)
+                    {
+                        sb.Append('\n').Append("  [no longer found] ").Append(lost);
                     }
 
                     string report = sb.ToString();

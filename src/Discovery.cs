@@ -66,6 +66,13 @@ namespace Hoard
     {
         internal static readonly List<Target> Targets = new List<Target>();
 
+        /// <summary>
+        /// Registration points found in an earlier session, in a mod that is still installed, but
+        /// not found now -- almost always a mod update that moved or renamed its chest list. Seals
+        /// are not honoured by that mod until Hoard recognises it again.
+        /// </summary>
+        internal static readonly List<string> Lost = new List<string>();
+
         private static readonly HashSet<string> _seen = new HashSet<string>();
 
         private static bool _done;
@@ -84,7 +91,7 @@ namespace Hoard
         // prefix would also swallow a mod called SystemsOverhaul or ValheimFortress.
         private static readonly string[] SkippedAssemblyNames =
         {
-            "Hoard", "mscorlib", "netstandard", "System", "0Harmony", "HarmonyX", "MonoMod",
+            "mscorlib", "netstandard", "System", "0Harmony", "HarmonyX", "MonoMod",
             "Newtonsoft.Json", "YamlDotNet", "ICSharpCode.SharpZipLib", "SemanticVersioning",
         };
 
@@ -116,6 +123,86 @@ namespace Hoard
             }
 
             Interception.ApplyAll();
+
+            try
+            {
+                FindLostTargets();
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning("Could not compare with earlier sessions: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Compares this session's finds with the target switches left in the config by earlier
+        /// sessions. BepInEx keeps an entry that was read from the file but never bound this session
+        /// as an orphan, and writes it back on save, so a target that has disappeared stays visible
+        /// here until its mod is fixed or uninstalled. Only enabled targets of mods that are still
+        /// loaded count: a removed mod or a target switched off is nothing to warn about.
+        /// </summary>
+        private static void FindLostTargets()
+        {
+            Dictionary<ConfigDefinition, string> orphans = Plugin.OrphanedConfigEntries();
+            if (orphans == null || orphans.Count == 0)
+            {
+                return;
+            }
+
+            HashSet<string> loaded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    loaded.Add(asm.GetName().Name);
+                }
+                catch
+                {
+                    // An assembly that cannot report its name cannot be one we are looking for.
+                }
+            }
+
+            // A mod whose registration point was found again under a new name is handled; its old
+            // switch is just left over.
+            HashSet<string> handled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Target t in Targets)
+            {
+                if (t.Patched)
+                {
+                    handled.Add(t.AssemblyName);
+                }
+            }
+
+            foreach (KeyValuePair<ConfigDefinition, string> orphan in orphans)
+            {
+                if (orphan.Key.Section != "Targets")
+                {
+                    continue;
+                }
+
+                string key = orphan.Key.Key;
+                int split = key.IndexOf("::", StringComparison.Ordinal);
+                if (split <= 0)
+                {
+                    continue;
+                }
+
+                string assembly = key.Substring(0, split);
+                if (!loaded.Contains(assembly) || handled.Contains(assembly))
+                {
+                    continue;
+                }
+
+                if (!bool.TryParse(orphan.Value?.Trim(), out bool enabled) || !enabled)
+                {
+                    continue;
+                }
+
+                Lost.Add(key);
+                Plugin.Log.LogWarning(
+                    key.Substring(0, split) + " is installed, but Hoard no longer recognises " + key.Substring(split + 2) +
+                    ". Sealed chests are not protected from that mod. Its update probably changed how it keeps its chests.");
+            }
         }
 
         private static void Scan()
@@ -337,6 +424,13 @@ namespace Hoard
 
         private static bool IsSkipped(Assembly asm)
         {
+            // Hoard's own SealSync has exactly the shape this scan looks for, so the plugin's
+            // assembly is excluded by identity, not by a name that could change.
+            if (asm == typeof(Plugin).Assembly)
+            {
+                return true;
+            }
+
             string name;
             try
             {

@@ -5,7 +5,7 @@
     <AssemblyName>Hoard</AssemblyName>
     <RootNamespace>Hoard</RootNamespace>
     <LangVersion>latest</LangVersion>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>isimp</Authors>
     <Product>Hoard</Product>
     <Description>Mark a chest and the container-automation mods leave it alone.</Description>

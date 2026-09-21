@@ -14,7 +14,9 @@ Most of Hoard was written by Claude Code (Anthropic), which did the heavy liftin
 
 Look at a chest and press K to seal it, and press K again to unseal it. The chest's hover text shows whether it is sealed. The seal is stored on the chest itself, so it lasts across saves and is the same for every player. Inside a ward only players permitted on that ward can change it, and a personal chest can only be sealed by the player who built it.
 
-Hoard finds supported mods on its own and does nothing if none are installed. Type /hoard in chat to see what it found.
+Sealed chests can also give off a faint glow so they stand out without hovering. It is off by default and is switched on with ShowSealGlow.
+
+Hoard finds supported mods on its own and does nothing if none are installed. Type /hoard in chat to see what it found. If a supported mod is updated in a way Hoard no longer recognises, Hoard tells you when you spawn, because that mod ignores seals until Hoard supports it again.
 
 Tested with AzuAutoStore, AzuCraftyBoxes, GrabMaterials and PetPantry.
 
